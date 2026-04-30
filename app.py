@@ -5,40 +5,32 @@ import pandas as pd
 # پەیوەندی لەگەڵ گوگڵ شیت
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# خوێندنەوەی داتاکان لە شیتەکە
-df_users = conn.read(worksheet="Sheet1", ttl=0)
-user_row = df_users[df_users['Username'] == 'Test_user'].iloc[0]
-balance = float(user_row['Wallet_balance'])
+# خوێندنەوەی داتا - لێرە تاقی دەکەینەوە ئەگەر هەڵە هەبوو نامەیەکمان بداتێ
+try:
+    df = conn.read(ttl=5) # ttl=5 واتا هەر ٥ چرکە جارێک زانیاری نوێ بێنە
+    user_row = df[df['Username'] == 'Test_user'].iloc[0]
+    balance = float(user_row['Wallet_balance'])
+except Exception as e:
+    st.error("کێشەیەک لە پەیوەندی گوگڵ شیت هەیە. تکایە دڵنیابە لە لینکەکە.")
+    st.stop()
 
-# دیزاینی لای چەپ (Sidebar)
+# لای چەپی سایتەکە
 st.sidebar.title("💰 هەژماری من")
 st.sidebar.metric("باڵانسی ئێستا", f"${balance:,.2f}")
 
-st.sidebar.markdown("---")
-
-# بەشی بارگاویکردن بە USDT
-with st.sidebar.expander("💎 بارگاویکردن بە USDT"):
-    st.warning("⚠️ تەنها تۆڕی (TRC20) بەکاربهێنە")
-    
-    st.write("**ناونیشانی واڵێتی من:**")
-    # ناونیشانی واڵێتەکەی تۆ لێرە جێگیر کراوە
-    st.code("TMR7DR8EtB3aNp2inXt8zfTVsXbHm9dv8M") 
-    
-    st.info("دوای ناردنی پارەکە، وێنەی وەسڵەکە (Screenshot) بنێرە بۆ تێلیگرامەکەمان بۆ ئەوەی باڵانسەکەت بۆ زیاد بکەین.")
-    
-    # لێرە لە جیاتی YOUR_USERNAME ناوی یوزەری تێلیگرامی خۆت بنووسە
-    telegram_url = "https://t.me/YOUR_USERNAME" 
-    st.link_button("🚀 ناردنی وەسڵ بۆ تێلیگرام", telegram_url)
-
-# بەشی سەرەکی سایت
+# بەشی وەبەرهێنان
 st.title("📈 سەکۆی وەبەرهێنانی فۆرێکس")
-st.write(f"بەخێربێیت **Test_user**")
+amount = st.number_input("بڕی وەبەرهێنان ($)", min_value=1.0)
 
-trade_amount = st.number_input("بڕی وەبەرهێنان ($)", min_value=1.0, max_value=balance)
-
-if st.button("ئێستا بکڕە و قازانج وەرگرە"):
-    if balance >= trade_amount:
+if st.button("✅ ئێستا بکڕە"):
+    if balance >= amount:
+        new_balance = balance + (amount * 0.05)
+        # گۆڕینی پارەکە لە ناو خشتەکەدا
+        df.loc[df['Username'] == 'Test_user', 'Wallet_balance'] = new_balance
+        # ناردنی بۆ گوگڵ شیت
+        conn.update(data=df)
+        
         st.balloons()
-        st.success(f"داواکارییەکەت بۆ وەبەرهێنانی ${trade_amount} بە سەرکەوتوویی تۆمارکرا.")
+        st.success(f"سەرکەوتوو بوو! باڵانسی نوێ: ${new_balance}")
     else:
-        st.error("باڵانسەکەت بەش ناکات. تکایە واڵێتەکەت بارگاوی بکەرەوە.")
+        st.error("باڵانسەکەت بەش ناکات")
