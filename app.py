@@ -1,120 +1,113 @@
 import streamlit as st
-import pandas as pd
 
-# 1. ڕێکخستنی شاشە و دیزاینی ئەپ
-st.set_page_config(page_title="Boss Market", page_icon="🛒", layout="centered")
+# 1. ڕێکخستنی سەرەتایی
+st.set_page_config(page_title="CaloRun Clone", layout="centered")
 
-# 2. دروستکردنی داتای کاڵاکان و میمۆری ئەپەکە
-if 'cart' not in st.session_state:
-    st.session_state.cart = []
-if 'balance' not in st.session_state:
-    st.session_state.balance = 500.0  # باڵانسی سەرەتایی بەکارهێنەر
+# 2. دروستکردنی میمۆری (Database) بۆ ئەپەکە
+if 'page' not in st.session_state:
+    st.session_state.page = "Home"
+if 'coins' not in st.session_state:
+    st.session_state.coins = 1908
+if 'steps' not in st.session_state:
+    st.session_state.steps = 306
 
-# داتای کاڵاکان (دەتوانیت زیادیان بکەیت)
-products = [
-    {"id": 1, "name": "iPhone 15 Pro", "price": 999, "image": "📱", "desc": "نوێترین مۆبایلی ئەپڵ"},
-    {"id": 2, "name": "AirPods Pro 2", "price": 249, "image": "🎧", "desc": "باشترین جۆری بیستۆک"},
-    {"id": 3, "name": "MacBook Air M3", "price": 1299, "image": "💻", "desc": "بۆ کاری دیزاین و پرۆگرامینگ"},
-    {"id": 4, "name": "Apple Watch S9", "price": 399, "image": "⌚", "desc": "کاتژمێری زیرەکی وەرزشی"}
-]
-
-# 3. دیزاینی CSS بۆ ئەوەی وەک ئەپ دەربکەوێت
+# 3. دیزاینی CSS بۆ ئەوەی ڕێک وەک ئەپەکە بێت
 st.markdown("""
     <style>
     header {visibility: hidden;}
-    .main { background-color: #f5f5f5; }
-    .product-card {
-        background-color: white;
-        padding: 15px;
-        border-radius: 15px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        margin-bottom: 10px;
-        text-align: center;
+    .main { background: linear-gradient(180deg, #e6ff80 0%, #ffffff 100%); }
+    
+    /* بازنەی ناوەڕاست */
+    .circle-container {
+        border: 8px solid white;
+        border-radius: 50%;
+        width: 220px;
+        height: 220px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        margin: auto;
+        background-color: transparent;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
     }
-    .stButton > button {
-        border-radius: 10px;
-        background-color: #007bff;
+    
+    /* دوگمەی ڕەشی Convert */
+    .black-button {
+        background-color: #111;
         color: white;
-        width: 100%;
+        border-radius: 30px;
+        padding: 15px;
+        text-align: center;
+        font-weight: bold;
+        margin: 20px 0;
     }
-    .bottom-nav {
+    
+    /* مێنیوی خوارەوە (Bottom Nav) */
+    .nav-bar {
         position: fixed;
         bottom: 0;
         left: 0;
         width: 100%;
-        background-color: white;
-        padding: 10px;
+        background-color: #111;
         display: flex;
         justify-content: space-around;
-        border-top: 1px solid #ddd;
+        padding: 15px 0;
+        z-index: 1000;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# 4. دروستکردنی Navigation (مێنیوی گۆڕینی لاپەڕە)
-menu = st.sidebar.selectbox("بڕۆ بۆ لاپەڕەی:", ["🛍️ فرۆشگا", "🛒 عارەبانەی کڕین", "👤 پڕۆفایل و باڵانس"])
+# 4. دروستکردنی لاپەڕەکان
 
-# ---------------- لاپەڕەی فرۆشگا ----------------
-if menu == "🛍️ فرۆشگا":
-    st.title("Boss Market 🛒")
-    st.write(f"باڵانسی تۆ: **${st.session_state.balance}**")
-    st.markdown("---")
+# --- لاپەڕەی سەرەکی (Home) ---
+if st.session_state.page == "Home":
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        st.markdown(f"💰 **{st.session_state.coins}** ≈ ${st.session_state.coins/1000:.2f}")
+    with col2:
+        st.markdown("<p style='text-align:right;'>👤 ❓</p>", unsafe_allow_html=True)
     
-    # نیشاندانی کاڵاکان بە دوو ستوون
-    col1, col2 = st.columns(2)
-    for i, product in enumerate(products):
-        target_col = col1 if i % 2 == 0 else col2
-        with target_col:
-            st.markdown(f"""
-                <div class="product-card">
-                    <h1 style="font-size: 50px;">{product['image']}</h1>
-                    <h3>{product['name']}</h3>
-                    <p style="color: green; font-weight: bold;">${product['price']}</p>
-                </div>
-            """, unsafe_allow_html=True)
-            if st.button(f"زیادکردن بۆ عارەبانە", key=f"btn_{product['id']}"):
-                st.session_state.cart.append(product)
-                st.toast(f"{product['name']} زیادکرا!")
-
-# ---------------- لاپەڕەی عارەبانە ----------------
-elif menu == "🛒 عارەبانەی کڕین":
-    st.title("عارەبانەی کڕین 🛒")
-    if not st.session_state.cart:
-        st.info("عارەبانەکەت بەتاڵە.")
-    else:
-        total_price = 0
-        for item in st.session_state.cart:
-            col_img, col_txt = st.columns([1, 3])
-            col_img.write(f"### {item['image']}")
-            col_txt.write(f"**{item['name']}** - ${item['price']}")
-            total_price += item['price']
-        
-        st.markdown("---")
-        st.write(f"### کۆی گشتی: ${total_price}")
-        
-        if st.button("✅ کۆتاییهێنان بە کڕین"):
-            if st.session_state.balance >= total_price:
-                st.session_state.balance -= total_price
-                st.session_state.cart = []
-                st.balloons()
-                st.success("کڕینەکەت بە سەرکەوتوویی ئەنجامدرا!")
-            else:
-                st.error("باڵانسەکەت بەش ناکات!")
-
-# ---------------- لاپەڕەی پڕۆفایل ----------------
-elif menu == "👤 پڕۆفایل و باڵانس":
-    st.title("پڕۆفایلی بەکارهێنەر 👤")
+    st.markdown("<br><center><img src='https://cdn-icons-png.flaticon.com/512/6212/6212627.png' width='100'></center>", unsafe_allow_html=True)
+    
     st.markdown(f"""
-        <div style="background-color: white; padding: 20px; border-radius: 15px; text-align: center;">
-            <img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" width="100">
-            <h2>Test_user</h2>
-            <h1 style="color: #007bff;">${st.session_state.balance}</h1>
-            <p>باڵانسی بەردەست</p>
+        <div class="circle-container">
+            <h1 style="font-size: 60px; margin:0;">{st.session_state.steps}</h1>
+            <p style="color: gray;">Limit: 10000</p>
         </div>
     """, unsafe_allow_html=True)
     
-    st.markdown("### 📥 بارگاویکردنەوەی هەژمار")
-    st.code("TMR7DR8EtB3aNp2inXt8zfTVsXbHm9dv8M")
-    st.write("پارە بنێرە بۆ ئەم واڵێتە و وەسڵەکە بنێرە بۆ تێلیگرام.")
-    st.link_button("🚀 ناردنی وەسڵ", "https://t.me/YOUR_USERNAME")
+    if st.button("Convert to CaloCoin", use_container_width=True):
+        st.session_state.coins += 30
+        st.toast("🎉 30 Coins Added!")
 
+# --- لاپەڕەی ئەرکەکان (Tasks) ---
+elif st.session_state.page == "Tasks":
+    st.title("Task Center")
+    st.write("🎁 **Daily Tasks**")
+    st.info("Check-in: +120 Coins")
+    st.info("Lucky Spin: +1000 Coins")
+    st.info("Play Lucky Slot: +1000 Coins")
+
+# --- لاپەڕەی واڵێت (Wallet) ---
+elif st.session_state.page == "Wallet":
+    st.title("My Wallet")
+    st.metric("Total Balance", f"${st.session_state.coins/1000:.2f}", f"{st.session_state.coins} Coins")
+    st.markdown("---")
+    st.write("Withdrawal Methods:")
+    st.write("🅿️ PayPal | 🅰️ Amazon | 💳 Mastercard")
+
+# --- لاپەڕەی کۆکراوەکان (Collection) ---
+elif st.session_state.page == "Collection":
+    st.title("My Collection")
+    col1, col2 = st.columns(2)
+    col1.warning("🔒 Fruit (0/9)")
+    col2.warning("🔒 BuBu (0/9)")
+
+# 5. مێنیوی خوارەوە (ئەمە وا دەکات وەک ئەپ لاپەڕەکان بگۆڕێت)
+st.write("<br><br><br>", unsafe_allow_html=True) # بۆشایی بۆ ئەوەی مێنیوەکە شت نەشارێتەوە
+cols = st.columns(4)
+if cols[0].button("🏠"): st.session_state.page = "Home"; st.rerun()
+if cols[1].button("📋"): st.session_state.page = "Tasks"; st.rerun()
+if cols[2].button("💼"): st.session_state.page = "Wallet"; st.rerun()
+if cols[3].button("⭐"): st.session_state.page = "Collection"; st.rerun()
