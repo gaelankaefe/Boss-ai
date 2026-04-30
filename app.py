@@ -1,95 +1,120 @@
 import streamlit as st
 import pandas as pd
 
-# ١. ڕێکخستنی سەرەتایی (App Mode)
-st.set_page_config(page_title="Boss Invest App", page_icon="⚡", layout="centered")
+# 1. ڕێکخستنی شاشە و دیزاینی ئەپ
+st.set_page_config(page_title="Boss Market", page_icon="🛒", layout="centered")
 
-# ٢. بەکارهێنانی CSS بۆ دیزاینی "Neon App"
+# 2. دروستکردنی داتای کاڵاکان و میمۆری ئەپەکە
+if 'cart' not in st.session_state:
+    st.session_state.cart = []
+if 'balance' not in st.session_state:
+    st.session_state.balance = 500.0  # باڵانسی سەرەتایی بەکارهێنەر
+
+# داتای کاڵاکان (دەتوانیت زیادیان بکەیت)
+products = [
+    {"id": 1, "name": "iPhone 15 Pro", "price": 999, "image": "📱", "desc": "نوێترین مۆبایلی ئەپڵ"},
+    {"id": 2, "name": "AirPods Pro 2", "price": 249, "image": "🎧", "desc": "باشترین جۆری بیستۆک"},
+    {"id": 3, "name": "MacBook Air M3", "price": 1299, "image": "💻", "desc": "بۆ کاری دیزاین و پرۆگرامینگ"},
+    {"id": 4, "name": "Apple Watch S9", "price": 399, "image": "⌚", "desc": "کاتژمێری زیرەکی وەرزشی"}
+]
+
+# 3. دیزاینی CSS بۆ ئەوەی وەک ئەپ دەربکەوێت
 st.markdown("""
     <style>
-    /* لابردنی ناونیشانی زیادی سەرەوە */
     header {visibility: hidden;}
-    .main { background-color: #000000; }
-    
-    /* سندوقی باڵانس (وەک بازنەکەی ناو وێنەکە) */
-    .balance-container {
-        background: linear-gradient(145deg, #1a1a1a, #000000);
-        border: 3px solid #ccff00;
-        border-radius: 50%;
-        width: 200px;
-        height: 200px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        margin: 0 auto;
-        box-shadow: 0 0 20px rgba(204, 255, 0, 0.4);
-    }
-    
-    /* دوگمەی Convert (وەک ناو وێنەکە) */
-    div.stButton > button {
-        background-color: #ccff00;
-        color: black;
-        border-radius: 30px;
-        border: none;
-        font-size: 20px;
-        font-weight: bold;
-        height: 3.5em;
-        width: 100%;
-        transition: 0.3s;
-    }
-    div.stButton > button:hover {
-        background-color: #e6ff80;
-        transform: scale(1.02);
-    }
-
-    /* کارتەکانی خوارەوە */
-    .feature-card {
-        background-color: #1a1a1a;
+    .main { background-color: #f5f5f5; }
+    .product-card {
+        background-color: white;
         padding: 15px;
         border-radius: 15px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        margin-bottom: 10px;
         text-align: center;
-        border-left: 5px solid #ccff00;
+    }
+    .stButton > button {
+        border-radius: 10px;
+        background-color: #007bff;
+        color: white;
+        width: 100%;
+    }
+    .bottom-nav {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        background-color: white;
+        padding: 10px;
+        display: flex;
+        justify-content: space-around;
+        border-top: 1px solid #ddd;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# ٣. ناوەڕۆکی ئەپەکە
-if 'balance' not in st.session_state:
-    st.session_state.balance = 100.0
+# 4. دروستکردنی Navigation (مێنیوی گۆڕینی لاپەڕە)
+menu = st.sidebar.selectbox("بڕۆ بۆ لاپەڕەی:", ["🛍️ فرۆشگا", "🛒 عارەبانەی کڕین", "👤 پڕۆفایل و باڵانس"])
 
-# وێنەی سەرەکی (Avatar) - لێرە دەتوانیت لینکی GIF دابنێیت
-st.markdown("<center><img src='https://cdn-icons-png.flaticon.com/512/6212/6212627.png' width='80'></center>", unsafe_allow_html=True)
+# ---------------- لاپەڕەی فرۆشگا ----------------
+if menu == "🛍️ فرۆشگا":
+    st.title("Boss Market 🛒")
+    st.write(f"باڵانسی تۆ: **${st.session_state.balance}**")
+    st.markdown("---")
+    
+    # نیشاندانی کاڵاکان بە دوو ستوون
+    col1, col2 = st.columns(2)
+    for i, product in enumerate(products):
+        target_col = col1 if i % 2 == 0 else col2
+        with target_col:
+            st.markdown(f"""
+                <div class="product-card">
+                    <h1 style="font-size: 50px;">{product['image']}</h1>
+                    <h3>{product['name']}</h3>
+                    <p style="color: green; font-weight: bold;">${product['price']}</p>
+                </div>
+            """, unsafe_allow_html=True)
+            if st.button(f"زیادکردن بۆ عارەبانە", key=f"btn_{product['id']}"):
+                st.session_state.cart.append(product)
+                st.toast(f"{product['name']} زیادکرا!")
 
-# نیشاندانی باڵانس لە ناو بازنە
-st.markdown(f"""
-    <div class="balance-container">
-        <h1 style='color: white; margin: 0; font-size: 45px;'>{st.session_state.balance}</h1>
-        <p style='color: #ccff00; margin: 0;'>Limit: 10000</p>
-    </div>
+# ---------------- لاپەڕەی عارەبانە ----------------
+elif menu == "🛒 عارەبانەی کڕین":
+    st.title("عارەبانەی کڕین 🛒")
+    if not st.session_state.cart:
+        st.info("عارەبانەکەت بەتاڵە.")
+    else:
+        total_price = 0
+        for item in st.session_state.cart:
+            col_img, col_txt = st.columns([1, 3])
+            col_img.write(f"### {item['image']}")
+            col_txt.write(f"**{item['name']}** - ${item['price']}")
+            total_price += item['price']
+        
+        st.markdown("---")
+        st.write(f"### کۆی گشتی: ${total_price}")
+        
+        if st.button("✅ کۆتاییهێنان بە کڕین"):
+            if st.session_state.balance >= total_price:
+                st.session_state.balance -= total_price
+                st.session_state.cart = []
+                st.balloons()
+                st.success("کڕینەکەت بە سەرکەوتوویی ئەنجامدرا!")
+            else:
+                st.error("باڵانسەکەت بەش ناکات!")
+
+# ---------------- لاپەڕەی پڕۆفایل ----------------
+elif menu == "👤 پڕۆفایل و باڵانس":
+    st.title("پڕۆفایلی بەکارهێنەر 👤")
+    st.markdown(f"""
+        <div style="background-color: white; padding: 20px; border-radius: 15px; text-align: center;">
+            <img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" width="100">
+            <h2>Test_user</h2>
+            <h1 style="color: #007bff;">${st.session_state.balance}</h1>
+            <p>باڵانسی بەردەست</p>
+        </div>
     """, unsafe_allow_html=True)
-
-st.write("##")
-
-# دوگمەی سەرەکی
-if st.button("🚀 Convert to USDT"):
-    st.balloons()
-    st.session_state.balance += 5.0
-    st.rerun()
-
-st.write("---")
-
-# بەشی کارتەکانی خوارەوە (وەک Claim)
-col1, col2 = st.columns(2)
-with col1:
-    st.markdown("<div class='feature-card'><h3 style='color:white;'>🏆</h3><p style='color:gray;'>Rank</p></div>", unsafe_allow_html=True)
-with col2:
-    st.markdown("<div class='feature-card'><h3 style='color:white;'>🎁</h3><p style='color:gray;'>Bonus</p></div>", unsafe_allow_html=True)
-
-# لای چەپ بۆ واڵێت
-with st.sidebar:
-    st.title("💳 Wallet Settings")
-    st.write("Your USDT Address:")
+    
+    st.markdown("### 📥 بارگاویکردنەوەی هەژمار")
     st.code("TMR7DR8EtB3aNp2inXt8zfTVsXbHm9dv8M")
-    st.info("بۆ بارگاویکردن، وەسڵ بنێرە بۆ تێلیگرام.")
-    st.link_button("Telegram Support", "https://t.me/YOUR_USERNAME")
+    st.write("پارە بنێرە بۆ ئەم واڵێتە و وەسڵەکە بنێرە بۆ تێلیگرام.")
+    st.link_button("🚀 ناردنی وەسڵ", "https://t.me/YOUR_USERNAME")
+
