@@ -12,10 +12,12 @@ timeframe = st.selectbox("کاتی چارت (Timeframe):", ["1m", "5m", "15m", "
 
 if st.button("🔍 دەستپێکردنی شیکردنەوە", use_container_width=True):
     with st.spinner('خەریکی وەرگرتنی داتام...'):
-        df = yf.download(asset_dict[selected], period="2d", interval=timeframe, progress=False)
+        # لێرە داتای زیاتر وەردەگرین (period="5d") بۆ ئەوەی RSI بە دروستی حیساب بکرێت
+        df = yf.download(asset_dict[selected], period="5d", interval=timeframe, progress=False)
         
-        if not df.empty:
-            # حیسابکردنی RSI بە شێوەی ماتماتیکی سادە
+        # پشکنینی ئەوەی ئایا داتاکە بەتاڵ نییە و بڕەکەی بەش دەکات
+        if not df.empty and len(df) > 30:
+            # حیسابکردنی RSI
             delta = df['Close'].diff()
             gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
             loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
@@ -28,13 +30,15 @@ if st.button("🔍 دەستپێکردنی شیکردنەوە", use_container_wid
             df['MACD'] = exp1 - exp2
             df['Signal'] = df['MACD'].ewm(span=9, adjust=False).mean()
 
-            last = df.iloc[-1]
+            # وەرگرتنی نوێترین ڕیز کە داتای تێدابێت
+            last = df.dropna().iloc[-1]
             rsi_val = last['RSI']
             macd_val = last['MACD']
             sig_val = last['Signal']
             price = last['Close']
 
             st.divider()
+            # نیشاندانی ئەنجام تەنها ئەگەر ژمارەکان دروست بن
             if rsi_val < 35 and macd_val > sig_val:
                 st.success(f"🟢 پێشنیار: CALL (کڕین) \n\n RSI: {rsi_val:.2f}")
             elif rsi_val > 65 and macd_val < sig_val:
@@ -44,4 +48,4 @@ if st.button("🔍 دەستپێکردنی شیکردنەوە", use_container_wid
             
             st.write(f"💵 نرخی ئێستا: **{price:.5f}**")
         else:
-            st.error("داتا پەیدا نەکرا")
+            st.error("⚠️ داتا بەردەست نییە یان بازاڕ داخراوە. تکایە کاتێکی تر تاقی بکەرەوە.")
