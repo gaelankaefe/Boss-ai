@@ -19,12 +19,13 @@ st.sidebar.markdown("---")
 # بەشی بارگاویکردن
 with st.sidebar.expander("💳 بارگاویکردنی واڵێت"):
     st.write("بڕی پارە بنێرە بۆ ئەم ژمارەیە:")
-    st.code("0750XXXXXXX") # ژمارەی خۆت لێرە بنووسە
+    st.code("0750XXXXXXX") # ژمارەی تەلەفۆنی خۆت لێرە بنووسە
     dep_amount = st.number_input("بڕی نێردراو ($)", min_value=1.0)
     
     # دوگمەی ناردنی وەسڵ بۆ تێلیگرام
     st.write("وێنەی وەسڵەکە لێرە بنێرە:")
-    telegram_url = f"https://t.me/YOUR_USERNAME" # ناوی بەکارهێنەری تێلیگرامی خۆت لێرە بنووسە
+    # لە شوێنی YOUR_USERNAME ناوی تێلیگرامەکەی خۆت بنووسە
+    telegram_url = f"https://t.me/YOUR_USERNAME" 
     st.link_button("🚀 ناردنی وەسڵ بۆ تێلیگرام", telegram_url)
 
 # دیزاینی ناوەڕاستی سایتەکە
@@ -39,5 +40,4 @@ if st.button("ئێستا بکڕە و قازانج وەرگرە"):
         st.success(f"داواکارییەکەت بە سەرکەوتوویی تۆمارکرا بۆ بڕی ${trade_amount}")
     else:
         st.error("باڵانسی پێویستت نییە. تکایە واڵێتەکەت بارگاوی بکەرەوە.")
-
 
