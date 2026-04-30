@@ -6,39 +6,43 @@ import pandas as pd
 try:
     conn = st.connection("gsheets", type=GSheetsConnection)
     df = conn.read(ttl=5)
+    
+    # دڵنیابوونەوە لەوەی Wallet_balance ژمارەیە
+    df['Wallet_balance'] = pd.to_numeric(df['Wallet_balance'], errors='coerce')
+    
     user_row = df[df['Username'] == 'Test_user'].iloc[0]
     balance = float(user_row['Wallet_balance'])
 except Exception as e:
-    st.error("⚠️ کێشە لە پەیوەندی گوگڵ شیت هەیە. دڵنیابە کە شیتەکەت Public کراوە.")
+    st.error("⚠️ کێشە لە خوێندنەوەی داتا هەیە.")
     st.stop()
 
-# ٢. دیزاینی لای چەپ (Sidebar)
+# ٢. دیزاینی Sidebar
 st.sidebar.title("💰 هەژماری من")
 st.sidebar.metric("باڵانسی ئێستا", f"${balance:,.2f}")
 
-st.sidebar.markdown("---")
-
-# بەشی بارگاویکردن (هەموو ڕێگاکان)
+# بەشی بارگاویکردن
 with st.sidebar.expander("💳 بارگاویکردنی واڵێت"):
     st.write("**USDT (TRC20):**")
     st.code("TMR7DR8EtB3aNp2inXt8zfTVsXbHm9dv8M")
-    
-    st.write("**ناونیشانی تێلیگرام:**")
-    # ناوی بەکارهێنەری خۆت لێرە دابنێ
-    telegram_url = "https://t.me/YOUR_USERNAME" 
+    telegram_url = "https://t.me/YOUR_USERNAME" # ناوی خۆت لێرە بنووسە
     st.link_button("🚀 ناردنی وەسڵ", telegram_url)
 
-# ٣. بەشی سەرەکی سایت
-st.title("📈 سەکۆی وەبەرهێنانی فۆرێکس")
+# ٣. بەشی سەرەکی
+st.title("📈 فۆڕێکس")
 st.write(f"بەخێربێیت **Test_user**")
 
-amount = st.number_input("بڕی وەبەرهێنان ($)", min_value=1.0)
+amount = st.number_input("($) بڕی وەبەرهێنان", min_value=1.0, step=1.0)
 
 if st.button("✅ ئێستا بکڕە"):
     if balance >= amount:
-        new_balance = balance + (amount * 0.05)
-        # نوێکردنەوەی داتا لەناو سایت و ناردنی بۆ گوگڵ شیت
+        # لێرەدا بە وردی ژمارەکان کۆدەکەینەوە
+        profit = float(amount) * 0.05
+        new_balance = float(balance) + profit
+        
+        # گۆڕینی نرخەکە لەناو داتاکان
         df.loc[df['Username'] == 'Test_user', 'Wallet_balance'] = new_balance
+        
+        # نوێکردنەوەی شیتەکە
         conn.update(data=df)
         
         st.balloons()
