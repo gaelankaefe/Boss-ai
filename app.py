@@ -1,43 +1,32 @@
 import streamlit as st
 from streamlit_gsheets import GSheetsConnection
-import pandas as pd
 
-# پەیوەندی لەگەڵ گوگڵ شیت
+# دروستکردنی پەیوەندی
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# خوێندنەوەی باڵانسی بەکارهێنەر لە Sheet1
-df_users = conn.read(worksheet="Sheet1", ttl=0)
-user_row = df_users[df_users['Username'] == 'Test_user'].iloc[0]
-balance = float(user_row['Wallet_balance'])
-
-# دیزاینی لای چەپ (Sidebar)
-st.sidebar.title("💰 هەژماری من")
-st.sidebar.metric("باڵانسی ئێستا", f"${balance:,.2f}")
-
-st.sidebar.markdown("---")
-
-# بەشی بارگاویکردن
-with st.sidebar.expander("💳 بارگاویکردنی واڵێت"):
-    st.write("بڕی پارە بنێرە بۆ ئەم ژمارەیە:")
-    st.code("0750XXXXXXX") # ژمارەی تەلەفۆنی خۆت لێرە بنووسە
-    dep_amount = st.number_input("بڕی نێردراو ($)", min_value=1.0)
+# خوێندنەوەی هەموو داتاکان بەبێ ناونانی Worksheet
+try:
+    df = conn.read(ttl=0)
     
-    # دوگمەی ناردنی وەسڵ بۆ تێلیگرام
-    st.write("وێنەی وەسڵەکە لێرە بنێرە:")
-    # لە شوێنی YOUR_USERNAME ناوی تێلیگرامەکەی خۆت بنووسە
-    telegram_url = f"https://t.me/YOUR_USERNAME" 
-    st.link_button("🚀 ناردنی وەسڵ بۆ تێلیگرام", telegram_url)
+    # دۆزینەوەی زانیاری بەکارهێنەر
+    user_row = df[df['Username'] == 'Test_user'].iloc[0]
+    balance = float(user_row['Wallet_balance'])
 
-# دیزاینی ناوەڕاستی سایتەکە
-st.title("📈 سەکۆی وەبەرهێنان")
-st.write(f"بەخێربێیت **Test_user**! ئێستا دەتوانیت دەست بکەیت بە وەبەرهێنان.")
+    st.sidebar.title("💰 هەژماری من")
+    st.sidebar.metric("باڵانسی ئێستا", f"${balance:,.2f}")
 
-trade_amount = st.number_input("بڕی وەبەرهێنان ($)", min_value=1.0, max_value=balance)
+    # بەشی بارگاویکردن
+    with st.sidebar.expander("💳 بارگاویکردنی واڵێت"):
+        st.write("بۆ بارگاویکردن، وێنەی وەسڵ بنێرە بۆ تێلیگرام:")
+        st.link_button("🚀 ناردنی وەسڵ", "https://t.me/YOUR_USERNAME")
 
-if st.button("ئێستا بکڕە و قازانج وەرگرە"):
-    if balance >= trade_amount:
+    st.title("📈 سەکۆی وەبەرهێنان")
+    st.write(f"بەخێربێیت **Test_user**")
+    
+    amount = st.number_input("بڕی وەبەرهێنان ($)", min_value=1.0, max_value=balance)
+    if st.button("ئێستا بکڕە"):
         st.balloons()
-        st.success(f"داواکارییەکەت بە سەرکەوتوویی تۆمارکرا بۆ بڕی ${trade_amount}")
-    else:
-        st.error("باڵانسی پێویستت نییە. تکایە واڵێتەکەت بارگاوی بکەرەوە.")
+        st.success("داواکارییەکەت وەرگیرا")
 
+except Exception as e:
+    st.error("کێشەیەک لە پەیوەندی هەیە. تکایە دڵنیابە لینکی Google Sheets لە بەشی Secrets ڕاستە.")
