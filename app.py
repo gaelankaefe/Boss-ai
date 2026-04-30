@@ -2,32 +2,27 @@ import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 
-# ١. پەیوەندی لەگەڵ گوگڵ شیت
+# ١. پەیوەندی
+conn = st.connection("gsheets", type=GSheetsConnection)
+
+# ٢. خوێندنەوەی داتا بە شێوەیەک کە تێک نەچێت
+df = conn.read(ttl=0) # ttl=0 بۆ ئەوەی هەمیشە نوێترین ژمارە ببینیت
+
+# دڵنیابوون لەوەی باڵانس ژمارەیە
+df['Wallet_balance'] = pd.to_numeric(df['Wallet_balance'], errors='coerce').fillna(0)
+
 try:
-    conn = st.connection("gsheets", type=GSheetsConnection)
-    df = conn.read(ttl=5)
-    
-    # دڵنیابوونەوە لەوەی Wallet_balance ژمارەیە
-    df['Wallet_balance'] = pd.to_numeric(df['Wallet_balance'], errors='coerce')
-    
-    user_row = df[df['Username'] == 'Test_user'].iloc[0]
-    balance = float(user_row['Wallet_balance'])
-except Exception as e:
-    st.error("⚠️ کێشە لە خوێندنەوەی داتا هەیە.")
+    user_index = df[df['Username'] == 'Test_user'].index[0]
+    balance = float(df.at[user_index, 'Wallet_balance'])
+except:
+    st.error("Username نەدۆزرایەوە لە ناو شیتەکەدا")
     st.stop()
 
-# ٢. دیزاینی Sidebar
+# دیزاینی Sidebar
 st.sidebar.title("💰 هەژماری من")
 st.sidebar.metric("باڵانسی ئێستا", f"${balance:,.2f}")
 
-# بەشی بارگاویکردن
-with st.sidebar.expander("💳 بارگاویکردنی واڵێت"):
-    st.write("**USDT (TRC20):**")
-    st.code("TMR7DR8EtB3aNp2inXt8zfTVsXbHm9dv8M")
-    telegram_url = "https://t.me/YOUR_USERNAME" # ناوی خۆت لێرە بنووسە
-    st.link_button("🚀 ناردنی وەسڵ", telegram_url)
-
-# ٣. بەشی سەرەکی
+# بەشی فۆرێکس
 st.title("📈 فۆڕێکس")
 st.write(f"بەخێربێیت **Test_user**")
 
@@ -35,17 +30,18 @@ amount = st.number_input("($) بڕی وەبەرهێنان", min_value=1.0, step=
 
 if st.button("✅ ئێستا بکڕە"):
     if balance >= amount:
-        # لێرەدا بە وردی ژمارەکان کۆدەکەینەوە
+        # ئەنجامدانی حیسابات
         profit = float(amount) * 0.05
-        new_balance = float(balance) + profit
+        new_balance = balance + profit
         
-        # گۆڕینی نرخەکە لەناو داتاکان
-        df.loc[df['Username'] == 'Test_user', 'Wallet_balance'] = new_balance
+        # نوێکردنەوەی نرخەکە لە ناو لیستەکەدا
+        df.at[user_index, 'Wallet_balance'] = new_balance
         
-        # نوێکردنەوەی شیتەکە
-        conn.update(data=df)
+        # --- ئەمە دێڕە گرنگەکەیە بۆ چارەسەری TypeError ---
+        conn.update(data=df) 
         
         st.balloons()
         st.success(f"سەرکەوتوو بوو! باڵانسی نوێ: ${new_balance:,.2f}")
+        st.info("تکایە لاپەڕەکە ڕیفریش بکەرەوە بۆ بینینی گۆڕانکارییەکە.")
     else:
         st.error("⚠️ باڵانسەکەت بەش ناکات")
