@@ -1,60 +1,43 @@
 import streamlit as st
+from streamlit_gsheets import GSheetsConnection
 import pandas as pd
-import yfinance as download_data # ئەگەر بۆ داتاکان بەکاری دێنیت
 
-# --- ١. ڕێکخستنی سەرەتایی واڵێت ---
-if 'wallet' not in st.session_state:
-    st.session_state.wallet = 100.0  # بڕی پارەی سەرەتایی دیارییە
+# پەیوەندی لەگەڵ گوگڵ شیت
+conn = st.connection("gsheets", type=GSheetsConnection)
 
-# --- ٢. دیزاینی Sidebar (لای چەپ) ---
+# خوێندنەوەی باڵانسی بەکارهێنەر لە Sheet1
+df_users = conn.read(worksheet="Sheet1", ttl=0)
+user_row = df_users[df_users['Username'] == 'Test_user'].iloc[0]
+balance = float(user_row['Wallet_balance'])
+
+# دیزاینی لای چەپ (Sidebar)
 st.sidebar.title("💰 هەژماری من")
-st.sidebar.metric(label="بڕی پارەی ناو واڵێت", value=f"${st.session_state.wallet:,.2f}")
+st.sidebar.metric("باڵانسی ئێستا", f"${balance:,.2f}")
 
-# بەشی بارگاویکردن بۆ تاقیکردنەوە
+st.sidebar.markdown("---")
+
+# بەشی بارگاویکردن
 with st.sidebar.expander("💳 بارگاویکردنی واڵێت"):
-    amount_to_add = st.number_input("بڕی پارە (USD)", min_value=0)
-    if st.button("زیادکردن"):
-        st.session_state.wallet += amount_to_add
-        st.success("سەرکەوتووبوو!")
-        st.rerun()
+    st.write("بڕی پارە بنێرە بۆ ئەم ژمارەیە:")
+    st.code("0750XXXXXXX") # ژمارەی خۆت لێرە بنووسە
+    dep_amount = st.number_input("بڕی نێردراو ($)", min_value=1.0)
+    
+    # دوگمەی ناردنی وەسڵ بۆ تێلیگرام
+    st.write("وێنەی وەسڵەکە لێرە بنێرە:")
+    telegram_url = f"https://t.me/YOUR_USERNAME" # ناوی بەکارهێنەری تێلیگرامی خۆت لێرە بنووسە
+    st.link_button("🚀 ناردنی وەسڵ بۆ تێلیگرام", telegram_url)
 
-# --- ٣. ناونیشانی سەرەکی سایتەکە ---
-st.title("🚀 سەکۆی زیرەکی فۆرێکس")
-st.write(f"بەخێربێیت! ئێستا دەتوانیت وەبەرهێنان بکەیت.")
+# دیزاینی ناوەڕاستی سایتەکە
+st.title("📈 سەکۆی وەبەرهێنان")
+st.write(f"بەخێربێیت **Test_user**! ئێستا دەتوانیت دەست بکەیت بە وەبەرهێنان.")
 
-# لێرەدا کۆدی چارتەکەت دادەنێیت (ئەوەی پێشتر هەبوو)
-# بۆ نموونە:
-symbol = st.selectbox("دراوێک هەڵبژێرە:", ["EURUSD=X", "GBPUSD=X", "BTC-USD"])
-st.info(f"نرخی ئێستای {symbol} لە چارتەکە نیشان دراوە.")
+trade_amount = st.number_input("بڕی وەبەرهێنان ($)", min_value=1.0, max_value=balance)
 
-# --- ٤. سیستەمی کڕین و قازانج ---
-st.write("---")
-st.header("🛒 بازاڕی وەبەرهێنان")
+if st.button("ئێستا بکڕە و قازانج وەرگرە"):
+    if balance >= trade_amount:
+        st.balloons()
+        st.success(f"داواکارییەکەت بە سەرکەوتوویی تۆمارکرا بۆ بڕی ${trade_amount}")
+    else:
+        st.error("باڵانسی پێویستت نییە. تکایە واڵێتەکەت بارگاوی بکەرەوە.")
 
-col1, col2 = st.columns(2)
-
-with col1:
-    trade_amount = st.number_input("بڕی وەبەرهێنان ($)", min_value=1.0, max_value=float(st.session_state.wallet))
-    st.caption(f"تێبینی: ٥٪ قازانج وەردەگریت لەسەر ئەم بڕە.")
-
-with col2:
-    if st.button("✅ ئێستا بکڕە و قازانج وەرگرە"):
-        if st.session_state.wallet >= trade_amount:
-            # کەمکردنەوەی پارەکە
-            st.session_state.wallet -= trade_amount
-            
-            # حیسابکردنی قازانج (بۆ نموونە ٥٪)
-            profit = trade_amount * 0.05
-            st.session_state.wallet += (trade_amount + profit)
-            
-            st.balloons() # ئاهەنگگێڕان بە پەرشبوونی باڵۆن
-            st.success(f"پیرۆزە! بڕی ${profit} قازانجمان خستە سەر واڵێتەکەت.")
-            st.rerun()
-        else:
-            st.error("پارەی پێویستت نییە!")
-
-# --- ٥. مێژووی چالاکییەکان (Optional) ---
-st.write("---")
-with st.expander("🕒 مێژووی چالاکییەکان"):
-    st.write("هێشتا هیچ کڕینێکی تۆمارکراو نییە.")
 
