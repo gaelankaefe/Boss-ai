@@ -3,3 +3,5 @@ yfinance
 prophet
 plotly
 pandas
+st-gsheets-connection
+pandas
