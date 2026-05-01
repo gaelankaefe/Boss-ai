@@ -2,85 +2,86 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 
-st.set_page_config(page_title="AI Expert Trader", layout="centered")
-st.markdown("<h1 style='text-align: center; color: #ccff00;'>🛡️ AI Expert Committee</h1>", unsafe_allow_html=True)
+st.set_page_config(page_title="Pro AI Trader", layout="centered")
 
+# ناونیشان و ستایل
+st.markdown("<h1 style='text-align: center; color: #00ffcc;'>🛡️ Professional AI Predictor</h1>", unsafe_allow_html=True)
+
+# لیستێکی وردتر بۆ دراو و کانزاکان
 assets = {
+    "Bitcoin (BTC)": "BTC-USD",
+    "Gold (ئاڵتون)": "GC=F",
     "EUR/USD": "EURUSD=X",
     "GBP/USD": "GBPUSD=X",
-    "Gold (ئاڵتون)": "GC=F",
-    "Bitcoin (BTC)": "BTC-USD",
     "Ethereum (ETH)": "ETH-USD"
 }
 
-selected_name = st.selectbox("بژاردەیەک هەڵبژێرە:", list(assets.keys()))
-selected_symbol = assets[selected_name]
-tf = st.selectbox("کاتی چارت (Timeframe):", ["1m", "5m", "15m", "1h"])
+selected = st.selectbox("دراوێک هەڵبژێرە:", list(assets.keys()))
+tf = st.selectbox("تایمفرێم:", ["1m", "5m", "15m", "1h"])
 
-if st.button("🚀 دەستپێکردنی شیکردنەوە", use_container_width=True):
-    with st.spinner('خەریکی چاککردنی داتا و پشکنینم...'):
+if st.button("🔍 دەستپێکردنی شیکردنەوەی ورد", use_container_width=True):
+    with st.spinner('خەریکی پشکنینی ڕەوتی بازاڕم...'):
         try:
-            # وەرگرتنی داتا بەبێ هیچ فلتەرێک لە سەرەتادا
-            data = yf.download(selected_symbol, period="3d", interval=tf, progress=False)
+            # وەرگرتنی داتا بە شێوەی خاو
+            df = yf.download(assets[selected], period="3d", interval=tf, progress=False)
             
-            if not data.empty:
-                # --- ڕێکخستنی ستوونەکان بە شێوەیەکی توند ---
-                df = data.copy()
-                
-                # ئەگەر ستوونەکان تێکەڵ بوون (MultiIndex)، تەنها ئاستی کۆتایی وەردەگرین
+            if not df.empty and len(df) > 30:
+                # چاککردنی ستوونەکان بۆ ئەوەی چیتر هەڵەی 'Close' نەدات
                 if isinstance(df.columns, pd.MultiIndex):
-                    df.columns = [col[0] if isinstance(col, tuple) else col for col in df.columns]
+                    df.columns = df.columns.get_level_values(0)
                 
-                # دڵنیابوونەوە لەوەی ناوی ستوونەکان پیتی گەورەن (وەک ئەوەی yfinance دەینێرێت)
-                # ئەگەر 'Close' نەبوو، یەکەم ستوون کە داتای تێدایە بەکاردێنین
-                if 'Close' not in df.columns:
-                    df = df.rename(columns={df.columns[0]: 'Close'})
-
-                # حیسابکردنی RSI
+                # 1. ستراتیژی RSI (دیاریکردنی کڕین و فرۆشتنی زۆر)
                 delta = df['Close'].diff()
                 gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
                 loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
                 df['RSI'] = 100 - (100 / (1 + (gain / loss)))
 
-                # حیسابکردنی MACD
+                # 2. ستراتیژی MACD (دیاریکردنی ئاڕاستەی بازاڕ)
                 ema12 = df['Close'].ewm(span=12, adjust=False).mean()
                 ema26 = df['Close'].ewm(span=26, adjust=False).mean()
                 df['MACD'] = ema12 - ema26
                 df['Signal'] = df['MACD'].ewm(span=9, adjust=False).mean()
 
-                df_clean = df.dropna()
+                # 3. ستراتیژی Bollinger Bands (دیاریکردنی سنووری نرخ)
+                df['MA20'] = df['Close'].rolling(window=20).mean()
+                df['STD'] = df['Close'].rolling(window=20).std()
+                df['Upper'] = df['MA20'] + (df['STD'] * 2)
+                df['Lower'] = df['MA20'] - (df['STD'] * 2)
 
-                if not df_clean.empty:
-                    last = df_clean.iloc[-1]
-                    
-                    # وەرگرتنی نرخەکان بە دڵنیایی ۱۰۰٪
-                    def get_val(val):
-                        if hasattr(val, 'iloc'): return float(val.iloc[0])
-                        return float(val)
+                # وەرگرتنی کۆتا داتا
+                last = df.dropna().iloc[-1]
+                rsi = float(last['RSI'])
+                macd = float(last['MACD'])
+                macd_sig = float(last['Signal'])
+                price = float(last['Close'])
+                upper = float(last['Upper'])
+                lower = float(last['Lower'])
 
-                    price = get_val(last['Close'])
-                    rsi_val = get_val(last['RSI'])
-                    macd_val = get_val(last['MACD'])
-                    sig_val = get_val(last['Signal'])
+                # --- لۆجیکی پێشبینی (کۆدەنگی شارەزایان) ---
+                score = 0
+                if rsi < 30: score += 1 # ئاماژەی کڕین
+                if macd > macd_sig: score += 1 # ئاماژەی کڕین
+                if price <= lower: score += 1 # ئاماژەی کڕین
 
-                    score = 0
-                    if rsi_val < 30: score += 1
-                    elif rsi_val > 70: score -= 1
-                    if macd_val > sig_val: score += 1
-                    else: score -= 1
+                if rsi > 70: score -= 1 # ئاماژەی فرۆشتن
+                if macd < macd_sig: score -= 1 # ئاماژەی فرۆشتن
+                if price >= upper: score -= 1 # ئاماژەی فرۆشتن
 
-                    st.divider()
-                    if score >= 1:
-                        st.success(f"🟢 **STRONG CALL** \n\n RSI: {rsi_val:.2f}")
-                    elif score <= -1:
-                        st.error(f"🔴 **STRONG PUT** \n\n RSI: {rsi_val:.2f}")
-                    else:
-                        st.warning("⚖️ **WAIT** - بازاڕ جێگیر نییە")
-                    
-                    st.info(f"💵 نرخی ئێستا: {price:.5f}")
+                st.divider()
+
+                # نیشاندانی ئەنجام بەپێی کاتی پێویست
+                duration = "2-3 خولەک" if tf == "1m" else "10-15 خولەک"
+
+                if score >= 2:
+                    st.success(f"🔥 **STRONG CALL (کڕین)** \n\n کاتی پێشنیارکراو: {duration} \n\n RSI: {rsi:.1f}")
+                elif score <= -2:
+                    st.error(f"🔥 **STRONG PUT (فرۆشتن)** \n\n کاتی پێشنیارکراو: {duration} \n\n RSI: {rsi:.1f}")
                 else:
-                    st.error("داتای پێویست بۆ شیکردنەوە ئامادە نییە.")
+                    st.warning("⚖️ **چاوەڕێ بکە** - سیگناڵەکە بەهێز نییە")
+
+                st.info(f"💵 نرخی ئێستا: {price:.5f}")
+                
             else:
-                st.error("داتا لە یاهوو وەرنەگیرا.")
+                st.error("داتا بەردەست نییە. دڵنیابە بازاڕ کراوەیە.")
         except Exception as e:
-            st.error(f"هەڵەی تەکنیکی: {e}")
+            st.error(f"هەڵەیەکی تەکنیکی ڕوویدا: {e}")
