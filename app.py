@@ -1,194 +1,78 @@
 import streamlit as st
+import yfinance as yf
 import pandas as pd
-import numpy as np
-import requests
-import ta
-from sklearn.ensemble import RandomForestClassifier
+import pandas_ta as ta
+import time
 
-API_KEY = "YOUR_API_KEY"
+st.set_page_config(page_title="Boss-AI Trading Bot", layout="wide")
+st.title("📈 Boss-AI Real-Time Strategy Bot")
 
-# =============================
-# 📥 DATA
-# =============================
-def get_data(symbol, interval):
-    url = f"https://api.twelvedata.com/time_series?symbol={symbol}&interval={interval}&apikey={API_KEY}&outputsize=500"
-    data = requests.get(url).json()
-
-    if "values" not in data:
-        return None
-
-    df = pd.DataFrame(data['values'])
-    df = df.astype(float)
-    df = df[::-1]
+# --- بەشی وەرگرتنی نرخەکان ---
+def get_live_data(symbol="BTC-USD"):
+    data = yf.download(tickers=symbol, period="1d", interval="1m", progress=False)
+    # ڕێکخستنی ناوەکان بۆ ئەوەی کار لەگەڵ لۆژیکی مۆمەکان بکەن
+    df = data.copy()
+    df.columns = ['Adj Close', 'Close', 'High', 'Low', 'Open', 'Volume']
     return df
 
-# =============================
-# 📊 INDICATORS
-# =============================
-def indicators(df):
-    df['rsi'] = ta.momentum.RSIIndicator(df['close'], 14).rsi()
+# --- لۆژیکی شیکاری مۆمەکان بەپێی وێنەکان ---
+def analyze_signal(df):
+    if len(df) < 5: return None
+    
+    # وەرگرتنی ٣ مۆمی کۆتایی
+    c1, c2, c3 = df.iloc[-3], df.iloc[-2], df.iloc[-1]
+    
+    def get_body(c): return abs(c['Close'] - c['Open'])
+    
+    body3 = get_body(c3)
+    upper_wick3 = c3['High'] - max(c3['Open'], c3['Close'])
+    lower_wick3 = min(c3['Open'], c3['Close']) - c3['Low']
 
-    df['ema20'] = ta.trend.EMAIndicator(df['close'], 20).ema_indicator()
-    df['ema50'] = ta.trend.EMAIndicator(df['close'], 50).ema_indicator()
-    df['ema200'] = ta.trend.EMAIndicator(df['close'], 200).ema_indicator()
+    # ١. Hammer (چەقۆ) - کڕین
+    if lower_wick3 > (2 * body3) and upper_wick3 < (0.2 * body3):
+        return "🟢 BUY: Hammer Detected 🔨"
 
-    macd = ta.trend.MACD(df['close'])
-    df['macd'] = macd.macd()
-    df['macd_signal'] = macd.macd_signal()
+    # ٢. Bullish Engulfing - کڕین
+    if c2['Close'] < c2['Open'] and c3['Close'] > c3['Open'] and c3['Close'] > c2['Open']:
+        return "🟢 BUY: Bullish Engulfing 🔥"
 
-    bb = ta.volatility.BollingerBands(df['close'])
-    df['bb_high'] = bb.bollinger_hband()
-    df['bb_low'] = bb.bollinger_lband()
+    # ٣. Shooting Star - فرۆشتن
+    if upper_wick3 > (2 * body3) and lower_wick3 < (0.2 * body3):
+        return "🔴 SELL: Shooting Star Detected 🏹"
 
-    df['adx'] = ta.trend.ADXIndicator(df['high'], df['low'], df['close']).adx()
+    # ٤. Morning Star - کڕین
+    if c1['Close'] < c1['Open'] and get_body(c2) < (0.3 * get_body(c1)) and c3['Close'] > c3['Open']:
+        return "🟢 BUY: Morning Star Pattern 🌅"
 
-    return df
+    # ٥. Doji - ئاگاداری
+    if body3 < (0.1 * (c3['High'] - c3['Low'])):
+        return "⚠️ WAIT: Doji Detected (دوودڵی بازاڕ)"
 
-# =============================
-# 🕯 Candle Pattern
-# =============================
-def engulfing(df):
-    if len(df) < 2:
-        return 0
-    prev = df.iloc[-2]
-    last = df.iloc[-1]
+    return "🔎 چاوەڕوانی دەرفەتێکی زێڕین بە..."
 
-    # Bullish
-    if prev['close'] < prev['open'] and last['close'] > last['open']:
-        return 1
-    # Bearish
-    if prev['close'] > prev['open'] and last['close'] < last['open']:
-        return -1
-    return 0
+# --- بەشی پیشاندان لە سایتەکە ---
+symbol = st.sidebar.text_input("Symbol (e.g., BTC-USD, EURUSD=X)", "BTC-USD")
 
-# =============================
-# 🤖 AI MODEL
-# =============================
-def train_ai(df):
-    df['future'] = df['close'].shift(-5)
-    df['target'] = (df['future'] > df['close']).astype(int)
+placeholder = st.empty()
 
-    features = ['rsi','ema20','ema50','macd','adx']
-    df = df.dropna()
+while True:
+    with placeholder.container():
+        df = get_live_data(symbol)
+        current_price = df['Close'].iloc[-1]
+        signal = analyze_signal(df)
 
-    X = df[features]
-    y = df['target']
+        col1, col2 = st.columns(2)
+        col1.metric(f"Current Price ({symbol})", f"${current_price:,.2f}")
+        
+        if "BUY" in signal:
+            col2.success(signal)
+        elif "SELL" in signal:
+            col2.error(signal)
+        else:
+            col2.info(signal)
 
-    model = RandomForestClassifier(n_estimators=200)
-    model.fit(X, y)
-
-    return model
-
-# =============================
-# 🧠 STRATEGY
-# =============================
-def strategy(df):
-    last = df.iloc[-1]
-    buy, sell = 0, 0
-
-    # Trend
-    if last['close'] > last['ema200']:
-        buy += 3
-    else:
-        sell += 3
-
-    # EMA Cross
-    if last['ema20'] > last['ema50']:
-        buy += 2
-    else:
-        sell += 2
-
-    # RSI
-    if last['rsi'] < 30:
-        buy += 2
-    elif last['rsi'] > 70:
-        sell += 2
-
-    # MACD
-    if last['macd'] > last['macd_signal']:
-        buy += 2
-    else:
-        sell += 2
-
-    # BB
-    if last['close'] < last['bb_low']:
-        buy += 2
-    elif last['close'] > last['bb_high']:
-        sell += 2
-
-    # Candle Pattern
-    pattern = engulfing(df)
-    if pattern == 1:
-        buy += 2
-    elif pattern == -1:
-        sell += 2
-
-    strong = last['adx'] > 25
-
-    total = buy + sell
-    conf = max(buy, sell) / total if total else 0
-
-    if not strong or conf < 0.65:
-        return "NO TRADE", conf
-
-    return ("BUY", conf) if buy > sell else ("SELL", conf)
-
-# =============================
-# 🔥 FINAL AI + STRATEGY
-# =============================
-def predict(symbol):
-    df1 = get_data(symbol, "1min")
-    df5 = get_data(symbol, "5min")
-
-    if df1 is None or df5 is None:
-        return "ERROR", 0
-
-    df1 = indicators(df1)
-    df5 = indicators(df5)
-
-    model = train_ai(df1)
-
-    features = ['rsi','ema20','ema50','macd','adx']
-    last = df1[features].dropna().tail(1)
-
-    ai_pred = model.predict(last)[0]
-    ai_conf = model.predict_proba(last)[0].max()
-
-    s1, c1 = strategy(df1)
-    s5, c5 = strategy(df5)
-
-    # FINAL DECISION
-    if s1 == s5 and s1 != "NO TRADE" and ai_conf > 0.6:
-        final = "BUY" if ai_pred == 1 else "SELL"
-        confidence = (ai_conf + c1 + c5) / 3
-        return final, confidence
-
-    return "NO TRADE", (ai_conf + c1 + c5) / 3
-
-# =============================
-# 🌐 UI
-# =============================
-st.set_page_config(page_title="AI TRADING BOT", layout="centered")
-
-st.title("🤖 AI Trading Bot (ULTRA PRO MAX)")
-
-symbol = st.selectbox("دراو", ["EUR/USD", "BTC/USD"])
-auto = st.checkbox("Auto Refresh (5s)")
-
-if st.button("🚀 پێشبینی بکە"):
-    signal, confidence = predict(symbol)
-
-    if signal == "BUY":
-        st.success(f"📈 BUY\n\nConfidence: {confidence:.2f}")
-    elif signal == "SELL":
-        st.error(f"📉 SELL\n\nConfidence: {confidence:.2f}")
-    elif signal == "ERROR":
-        st.warning("⚠️ هەڵە لە داتا")
-    else:
-        st.info(f"⏳ NO TRADE\n\nConfidence: {confidence:.2f}")
-
-# Auto Refresh
-if auto:
-    import time
-    time.sleep(5)
-    st.rerun()
+        st.line_chart(df['Close'].tail(50))
+        
+        # ڕیفرێشکردن هەر ١٠ چرکە جارێک
+        time.sleep(10)
+        st.rerun()
