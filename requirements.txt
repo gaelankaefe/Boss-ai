@@ -2,4 +2,5 @@ streamlit
 pandas
 yfinance
 pandas_ta
+numpy
 
